@@ -1,5 +1,10 @@
 /* Draft only: not loaded into the website until Supabase and access policies are tested. */
 function createAuthController(client, callbacks) {
+  async function signInWithPassword(email, password) {
+    if (!email.trim() || !password) throw new Error('Vui lòng nhập email và mật khẩu.');
+    const {error} = await client.auth.signInWithPassword({email: email.trim(), password});
+    if (error) throw error;
+  }
   async function requestLogin(email, redirectUrl) {
     if (!email.trim()) throw new Error('Vui lòng nhập email.');
     const {error} = await client.auth.signInWithOtp({
@@ -24,5 +29,5 @@ function createAuthController(client, callbacks) {
       if (event === 'SIGNED_IN') callbacks.onSignedIn();
     });
   }
-  return {requestLogin, currentUser, signOut, onChange};
+  return {requestLogin, signInWithPassword, currentUser, signOut, onChange};
 }

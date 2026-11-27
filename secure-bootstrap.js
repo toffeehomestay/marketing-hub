@@ -6,6 +6,12 @@ const login = document.querySelector('#login');
 const bar = document.querySelector('#cloud-bar');
 const cloudStatus = document.querySelector('#cloud-status');
 const form = document.querySelector('#login-form');
+const loginDescription = document.querySelector('.login-card > .muted');
+loginDescription.textContent = 'Đăng nhập bằng tài khoản đã được cấp quyền.';
+const passwordLabel = document.createElement('label'); passwordLabel.className='field'; passwordLabel.textContent='Mật khẩu';
+const passwordInput = document.createElement('input'); passwordInput.type='password'; passwordInput.name='password'; passwordInput.autocomplete='current-password'; passwordInput.required=true;
+passwordLabel.append(passwordInput); form.querySelector('button').before(passwordLabel); form.querySelector('button').textContent='Đăng nhập';
+const magic = document.createElement('button'); magic.type='button'; magic.className='secondary'; magic.textContent='Gửi liên kết đăng nhập qua email'; form.after(magic);
 let cloud, auth, client, initialized = false;
 let recoveryRequired = false;
 
@@ -50,6 +56,7 @@ async function start() {
   if (!config?.supabaseUrl || !config?.supabasePublishableKey) {
     status.textContent = 'Website chưa được cấu hình. Vui lòng liên hệ người thiết lập.';
     form.querySelector('button').disabled = true;
+    magic.disabled = true;
     return;
   }
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(config.supabaseUrl)) throw new Error('Invalid Supabase URL');
@@ -61,13 +68,23 @@ async function start() {
     onSignedIn: () => { setTimeout(() => void activate(), 0); }
   });
   auth.onChange();
+  magic.onclick = async () => {
+    const email = form.elements.namedItem('email');
+    if (!email.reportValidity()) return;
+    magic.disabled=true;
+    try { await auth.requestLogin(email.value, new URL('secure.html', location.href).href); status.textContent='Hãy kiểm tra email để mở liên kết đăng nhập.'; }
+    catch (error) {
+      const code = typeof error?.code === 'string' && /^[a-z0-9_]{1,60}$/i.test(error.code) ? error.code : '';
+      status.textContent = 'Không gửi được liên kết. ' + (code ? 'Mã lỗi: '+code+'. ' : '') + 'Vui lòng gửi ảnh thông báo này để kiểm tra.';
+    } finally { magic.disabled=false; }
+  };
   form.onsubmit = async event => {
     event.preventDefault(); const button = form.querySelector('button'); button.disabled = true;
-    try { await auth.requestLogin(form.elements.namedItem('email').value, new URL('secure.html', location.href).href); status.textContent='Hãy kiểm tra email để mở liên kết đăng nhập.'; }
+    try { await auth.signInWithPassword(form.elements.namedItem('email').value, passwordInput.value); passwordInput.value=''; status.textContent='Đang mở không gian của bạn…'; }
     catch (error) {
       const code = typeof error?.code === 'string' && /^[a-z0-9_]{1,60}$/i.test(error.code) ? error.code : '';
       const httpStatus = Number.isInteger(error?.status) ? error.status : null;
-      status.textContent = 'Không gửi được liên kết. ' + (code ? 'Mã lỗi: '+code+'. ' : httpStatus ? 'Mã phản hồi: '+httpStatus+'. ' : '') + 'Vui lòng gửi ảnh thông báo này để kiểm tra.';
+      status.textContent = 'Không đăng nhập được. ' + (code ? 'Mã lỗi: '+code+'. ' : httpStatus ? 'Mã phản hồi: '+httpStatus+'. ' : '') + 'Kiểm tra email và mật khẩu; nếu vẫn lỗi, hãy gửi ảnh thông báo.';
     }
     finally { button.disabled = false; }
   };
