@@ -64,7 +64,11 @@ async function start() {
   form.onsubmit = async event => {
     event.preventDefault(); const button = form.querySelector('button'); button.disabled = true;
     try { await auth.requestLogin(form.elements.namedItem('email').value, new URL('secure.html', location.href).href); status.textContent='Hãy kiểm tra email để mở liên kết đăng nhập.'; }
-    catch { status.textContent='Không gửi được liên kết. Kiểm tra email và cấu hình đăng nhập.'; }
+    catch (error) {
+      const code = typeof error?.code === 'string' && /^[a-z0-9_]{1,60}$/i.test(error.code) ? error.code : '';
+      const httpStatus = Number.isInteger(error?.status) ? error.status : null;
+      status.textContent = 'Không gửi được liên kết. ' + (code ? 'Mã lỗi: '+code+'. ' : httpStatus ? 'Mã phản hồi: '+httpStatus+'. ' : '') + 'Vui lòng gửi ảnh thông báo này để kiểm tra.';
+    }
     finally { button.disabled = false; }
   };
   document.querySelector('#logout').onclick = async () => { try { await auth.signOut(); } catch (e) { alert(e.message); } };
