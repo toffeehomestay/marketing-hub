@@ -7,9 +7,25 @@ const bar = document.querySelector('#cloud-bar');
 const cloudStatus = document.querySelector('#cloud-status');
 const form = document.querySelector('#login-form');
 let cloud, auth, client, initialized = false;
+let recoveryRequired = false;
+
+function offerRecovery() {
+  recoveryRequired = true;
+  let existing = document.querySelector('#recovery');
+  if (existing) return;
+  const box = document.createElement('div'); box.id = 'recovery'; box.className = 'notice section';
+  const explanation = document.createElement('p'); explanation.textContent = 'Phiên đăng nhập đã kết thúc khi còn thay đổi chưa lưu. Hãy tải bản sao trước khi đăng nhập lại.';
+  const download = document.createElement('button'); download.type='button'; download.className='secondary'; download.textContent='Tải bản sao chưa lưu';
+  download.onclick = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:'application/json'}));
+    const a = document.createElement('a'); a.href=url; a.download='marketing-hub-chua-luu.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+  box.append(explanation,download); document.querySelector('.login-card').append(box);
+}
 
 async function activate() {
   if (initialized) return;
+  if (recoveryRequired) { status.textContent = 'Còn dữ liệu chưa lưu. Tải bản sao, sau đó mở lại trang để đăng nhập.'; return; }
   initialized = true;
   try {
     cloud = await createCloudWorkspace(client, message => { cloudStatus.textContent = message; });
@@ -41,7 +57,7 @@ async function start() {
   client = createClient(config.supabaseUrl, config.supabasePublishableKey);
   auth = createAuthController(client, {
     hasUnsaved: () => cloud?.hasUnsaved(),
-    onSignedOut: () => { app.style.display='none';bar.style.display='none';login.style.display='grid';initialized=false;data={clients:[],projects:[],tasks:[],resources:[],content:[],notes:[]}; },
+    onSignedOut: () => { app.style.display='none';bar.style.display='none';login.style.display='grid';initialized=false;if(cloud?.hasUnsaved()) offerRecovery();else data={clients:[],projects:[],tasks:[],resources:[],content:[],notes:[]}; },
     onSignedIn: () => { setTimeout(() => void activate(), 0); }
   });
   auth.onChange();
