@@ -17,3 +17,14 @@ test('session allows only the configured GitHub account',async()=>{
   async function signed(id){let body=to64(JSON.stringify({sub:id,exp:Date.now()+60000}));return body+'.'+to64(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(body)))}
   for(const [id,allowed] of [['123',true],['456',false]]){let value=await signed(id);let res=await worker.fetch(new Request('https://example.test/api/session',{headers:{cookie:'mh_session='+value}}),env);assert.equal((await res.json()).authenticated,allowed)}
 });
+test('a successful OAuth callback authorizes the owner without exposing the GitHub token',async()=>{
+  const original=globalThis.fetch;let observed=[];
+  globalThis.fetch=async(url,options)=>{observed.push(String(url));if(String(url).includes('/login/oauth/access_token'))return Response.json({access_token:'private-token'});if(String(url).includes('/user'))return Response.json({id:123});throw new Error('unexpected URL')};
+  try{
+    let initial=await worker.fetch(new Request('https://example.test/auth/login'),env);
+    let state=new URL(initial.headers.get('location')).searchParams.get('state');let proof=initial.headers.get('set-cookie').match(/mh_oauth=([^;]+)/)[1];
+    let callback=await worker.fetch(new Request('https://example.test/auth/callback?code=test&state='+state,{headers:{cookie:'mh_oauth='+proof}}),env);
+    assert.equal(callback.status,302);let headers=callback.headers.get('set-cookie');assert.ok(!headers.includes('private-token'));let session=headers.match(/mh_session=([^;]+)/)[1];
+    let check=await worker.fetch(new Request('https://example.test/api/session',{headers:{cookie:'mh_session='+session}}),env);assert.equal((await check.json()).authenticated,true);assert.equal(observed.length,2);
+  }finally{globalThis.fetch=original}
+});

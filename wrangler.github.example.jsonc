@@ -1,9 +1,10 @@
-// Draft example only. Fill in the D1 database ID and set secrets in Cloudflare.
+// Draft only. Review and configure runtime secrets before deployment.
 {
   "name": "marketing-hub",
   "main": "worker/index.js",
   "compatibility_date": "2026-11-27",
   "assets": {"directory": "./dist-github", "binding": "ASSETS", "run_worker_first": true},
-  "d1_databases": [{"binding": "DB", "database_name": "marketing-hub", "database_id": "REPLACE_WITH_DATABASE_ID"}],
-  "vars": {"APP_ORIGIN": "https://marketing-hub.dua0303123.workers.dev", "GITHUB_OWNER_ID": "294987271", "GITHUB_CLIENT_ID": "REPLACE_WITH_CLIENT_ID"}
+  "d1_databases": [{"binding": "DB", "database_name": "marketing-hub", "database_id": "f7f700fb-d048-4038-b8a6-2467b2445439"}],
+  "keep_vars": true,
+  "vars": {"APP_ORIGIN": "https://marketing-hub.dua0303123.workers.dev", "GITHUB_OWNER_ID": "294987271"}
 }
